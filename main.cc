@@ -1,6 +1,10 @@
-#include"game.hxx"
+#include<vector>
 #include"timer.hxx"
+#include"pacman.hxx"
+#include"ghost.hxx"
+#include"game.hxx"
 #include"graphics.hxx"
+using std::vector;
 
 int main()
 {
@@ -9,7 +13,9 @@ int main()
 	IntervalTimer main_clock(1. / 30.);
 	main_clock.Loop([&game](long long current_time) {
 			static const int KEY_ESC = 27;
-			game.Process(current_time, [](void) {
+			game.Process(current_time, [](const vector<vector<Cell>>& field,
+										  const vector<Ghost>& ghosts,
+										  const PacMan& pacman) {
 				int ch = (int)getch();
 				if (ch == KEY_DOWN) return Game::DOWN;
 				if (ch == KEY_UP) return Game::UP;

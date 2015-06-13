@@ -46,7 +46,7 @@ public:
 	} ControlSet;
 
 
-	Game(int height, int width, int sight = 7, int nghosts = 5):
+	Game(int height, int width, int sight = 10, int nghosts = 5):
 		height(height), width(width), score(0),
 		pacman(), sight(sight), rand4(0, 3),
 		nghosts(nghosts), ghosts()
@@ -140,13 +140,19 @@ public:
 		pen.DrawText(0, height+2, GraphicsToolkit::PINK, score_buffer);
 	}
 
-	inline bool Blocked(int x, int y) const {
-		return !(x >= 0 && y >= 0 && x < width && y < height &&
-				field[y][x] != Cell::WALL);
+	inline bool Blocked(int x, int y, bool block_overlap = false) const {
+		bool chk = !(x >= 0 && y >= 0 && x < width && y < height &&
+					field[y][x] != Cell::WALL);
+		if (chk || !block_overlap) return chk;
+		for (const auto& ghost: ghosts) {
+			auto gp = ghost.position();
+			if (gp.x == x && gp.y == y)
+				return true;
+		}
+		return chk;
 	}
 
 	static inline int Distance(int x, int y, int nx, int ny) {
-		//return (x - nx) * (x - nx) + (y - ny) * (y - ny);
 		return abs(x - nx) + abs(y - ny);
 	}
 
@@ -185,7 +191,7 @@ public:
 					int nx = gx + dx[k],
 						ny = gy + dy[k],
 						nxt_distance = Distance(nx, ny, x, y);
-					if (!Blocked(nx, ny) &&
+					if (!Blocked(nx, ny, true) &&
 						(ghost.edible(current_time) ? nxt_distance > cur_distance :
 													  nxt_distance < cur_distance)) {
 						if (ghost.move(current_time, dx[k], dy[k], false)) {
@@ -203,7 +209,7 @@ public:
 					int k = rand4.GetRandom();
 					int nx = gx + dx[k],
 						ny = gy + dy[k];
-					if (!Blocked(nx, ny)) {
+					if (!Blocked(nx, ny, true)) {
 						if (ghost.move(current_time, dx[k], dy[k], is_random)) {
 							break;
 						}
@@ -222,7 +228,7 @@ public:
 				ghost.set_edible(current_time + 500);
 			}
 		}
-		switch(input_source()) {
+		switch(input_source(field, ghosts, pacman)) {
 			case LEFT:
 				if (!Blocked(x-1, y))
 					pacman.move(-1, 0);

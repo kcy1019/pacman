@@ -8,6 +8,7 @@
 #include"graphics.hxx"
 #define x first
 #define y second
+using std::vector;
 
 class Ghost {
 private:
