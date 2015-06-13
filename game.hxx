@@ -11,8 +11,6 @@
 #define x first
 #define y second 
 using std::vector;
-typedef std::uniform_real_distribution<> RealDistribution;
-typedef std::uniform_int_distribution<> IntDistribution;
 
 class Cell {
 public:
@@ -32,6 +30,9 @@ public:
 
 class Game {
 private:
+	typedef std::uniform_real_distribution<> RealDistribution;
+	typedef std::uniform_int_distribution<> IntDistribution;
+
 	int height, width, score, sight, nghosts;
 	vector<vector<Cell>> field;
 	vector<Ghost> ghosts;
@@ -45,12 +46,12 @@ public:
 	} ControlSet;
 
 
-	Game(int height, int width, int sight = 1000, int nghosts = 5):
+	Game(int height, int width, int sight = 7, int nghosts = 5):
 		height(height), width(width), score(0),
 		pacman(), sight(sight), rand4(0, 3),
 		nghosts(nghosts), ghosts()
 	{
-		static const double fruit_dist = 0.95;
+		static const double fruit_dist = 0.90;
 		MazeFactory<Cell> factory;
 		Random<RealDistribution, double> real(0., 1.);
 		field = factory.GenerateMaze(width, height);
@@ -62,7 +63,7 @@ public:
 			for (int j = width - 1; j >= 0 && !escape_loop; j--) {
 				if (field[i][j] == Cell::EMPTY) {
 					int sz_ghost = ghosts.size();
-					ghosts.push_back(Ghost(j, i, colors[sz_ghost % 5]));
+					ghosts.emplace_back(std::move(Ghost(j, i, colors[sz_ghost % 5])));
 					if (ghosts.size() == nghosts)
 						escape_loop = true;
 				}
@@ -145,7 +146,8 @@ public:
 	}
 
 	static inline int Distance(int x, int y, int nx, int ny) {
-		return (x - nx) * (x - nx) + (y - ny) * (y - ny);
+		//return (x - nx) * (x - nx) + (y - ny) * (y - ny);
+		return abs(x - nx) + abs(y - ny);
 	}
 
 	template<typename Function>
@@ -161,7 +163,7 @@ public:
 			if (ghost.dead(current_time)) continue;
 			if (ghost.position() == pacman.position()) {
 				if (ghost.edible(current_time)) {
-					ghost.set_dead(current_time + 250);
+					ghost.set_dead(current_time + 100);
 					score += 100;
 				} else {
 					if (pacman.lives_left()) {
@@ -177,18 +179,23 @@ public:
 			int gx = ghost.position().x,
 				gy = ghost.position().y,
 				cur_distance = Distance(gx, gy, x, y);
-			bool moved = false;
+			bool moved = false, is_random = true;;
 			if (cur_distance <= sight) {
 				for (int k = 0; k < 4; k++) {
 					int nx = gx + dx[k],
 						ny = gy + dy[k],
 						nxt_distance = Distance(nx, ny, x, y);
 					if (!Blocked(nx, ny) &&
-						(ghost.edible(current_time) ? nxt_distance > cur_distance : nxt_distance < cur_distance)) {
-						ghost.move(current_time, dx[k], dy[k], false);
-						moved = true;
-						break;
+						(ghost.edible(current_time) ? nxt_distance > cur_distance :
+													  nxt_distance < cur_distance)) {
+						if (ghost.move(current_time, dx[k], dy[k], false)) {
+							moved = true;
+							break;
+						}
 					}
+				}
+				if (!moved) {
+					is_random = false;
 				}
 			}
 			if (!moved) {
@@ -197,8 +204,9 @@ public:
 					int nx = gx + dx[k],
 						ny = gy + dy[k];
 					if (!Blocked(nx, ny)) {
-						ghost.move(current_time, dx[k], dy[k]);
-						break;
+						if (ghost.move(current_time, dx[k], dy[k], is_random)) {
+							break;
+						}
 					}
 				}
 			}
@@ -238,10 +246,8 @@ public:
 	}
 
 	inline void EndGame(void) {
-		refresh();
-		clear();
-		curs_set(1);
-		echo();
+		GraphicsToolkit& pen = GraphicsToolkit::GetInstance();
+		pen.EndGraphics();
 		exit(0);
 	}
 };

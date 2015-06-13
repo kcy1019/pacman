@@ -10,7 +10,8 @@ Singleton class GraphicsToolkit {
 private:
 	GraphicsToolkit()
 	{
-		putenv("TERM=xterm-256color");
+		static char RICH_COLOR_TERM[] = "TERM=xterm-256color";
+		putenv(RICH_COLOR_TERM);
 		WINDOW *ret = initscr();
 		getmaxyx(ret, height, width);
 		nodelay(ret, TRUE);
@@ -44,8 +45,10 @@ public:
 
 	inline void DrawPoint(int x, int y, int color, char ch = '#') {
 		attron(COLOR_PAIR(color));
-		mvprintw(y, x+x+0, "%c", ch);
-		mvprintw(y, x+x+1, "%c", ch);
+		mvprintw(y+y+0, x+x+0, "%c", ch);
+		mvprintw(y+y+0, x+x+1, "%c", ch);
+		mvprintw(y+y+1, x+x+0, "%c", ch);
+		mvprintw(y+y+1, x+x+1, "%c", ch);
 		attroff(COLOR_PAIR(color));
 		refresh();
 	}
@@ -77,14 +80,14 @@ public:
 
 	inline void DrawText(int x, int y, int color, const string& message) {
 		attron(COLOR_PAIR(color));
-		mvprintw(y, x+x, "%s", message.c_str());
+		mvprintw(y+y, x+x, "%s", message.c_str());
 		attroff(COLOR_PAIR(color));
 		refresh();
 	}
 
 	inline void DrawMessageBox(int ldx, int ldy, int color, const string& message) {
 		int rux = ldx + ((int)message.size() + 1) / 2 + 1,
-			ruy = ldy + 2;
+			ruy = ldy + 4;
 		DrawBox(ldx, ldy, rux, ruy, color);
 		DrawText(ldx + 1, ldy + 1, color, message);
 	}
@@ -92,6 +95,15 @@ public:
 	inline void Clear(void) {
 		clear();
 		refresh();
+	}
+
+	inline void EndGraphics(void) {
+		refresh();
+		clear();
+		curs_set(1);
+		echo();
+		keypad(stdscr, FALSE);
+		if (system("reset"));
 	}
 };
 #undef Singleton

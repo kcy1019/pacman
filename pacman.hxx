@@ -2,12 +2,12 @@
 #ifndef __PACMAN__
 #define __PACMAN__
 #include <algorithm>
-typedef std::pair<int,int> Coord;
 #define x first
 #define y second
 
 class PacMan {
 private:
+	typedef std::pair<int,int> Coord;
 	int x, y, sx, sy, lives;
 public:
 	PacMan(int lives = 3):

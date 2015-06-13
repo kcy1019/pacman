@@ -4,9 +4,8 @@
 
 int main()
 {
-	Game game(33, 33);
-	// TODO: auto adjust dimensions --
-	// use GraphicsToolkit.width, GraphicsToolkit.height
+	GraphicsToolkit& pen = GraphicsToolkit::GetInstance();
+	Game game(15, 15);
 	IntervalTimer main_clock(1. / 30.);
 	main_clock.Loop([&game](long long current_time) {
 			static const int KEY_ESC = 27;

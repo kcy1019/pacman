@@ -10,6 +10,8 @@ private:
 	std::random_device random_device;
 	DistType dist;
 
+	void operator = (Random const&) = delete;
+	Random(Random const&) = delete;
 public:
 	Random(ReturnType from, ReturnType to): random_device() {
 		generator = std::mt19937(random_device());

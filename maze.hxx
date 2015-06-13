@@ -12,12 +12,12 @@
 using std::pair;
 using std::queue;
 using std::vector;
-typedef std::uniform_real_distribution<> RealDistribution;
-typedef std::uniform_int_distribution<> IntDistribution;
 
 template<typename CellType>
 class MazeFactory {
 private:
+	typedef std::uniform_real_distribution<> RealDistribution;
+	typedef std::uniform_int_distribution<> IntDistribution;
 	inline bool CheckBoundary(int x, int y, int width, int height) {
 		return x >= 0 && y >= 0 && x < width && y < height;
 	}
