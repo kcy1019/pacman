@@ -6,6 +6,17 @@
 #include<algorithm>
 #include"random.hxx"
 #include"graphics.hxx"
+
+#ifdef __TRAINER__
+class GraphicsToolkit {
+public:
+	static const enum {BLACK = 16, LEMON = 184, BLUE = 23,
+					   RED = 124, CYAN = 122, YELLOW = 100,
+					   PINK = 168, GREEN = 53, WHITE = 230,
+					   GRAY = 242} ColorSet;
+};
+#endif
+
 #define x first
 #define y second
 using std::vector;
@@ -21,11 +32,26 @@ private:
 	long long edible_until, dead_until;
 	Random<RealDistribution, double> real;
 
-	void operator = (Ghost const&) = delete;
-	Ghost(Ghost const&) = delete;
-
 public:
 	Ghost& operator = (Ghost&&) { return *this; }
+	Ghost(const Ghost& r):
+		own_color(r.own_color),
+		x(r.x), y(r.y), sx(r.sx), sy(r.sy),
+		tabu_list(r.tabu_list),
+		edible_until(r.edible_until),
+		dead_until(r.dead_until),
+		real(0., 1.) {}
+
+	void operator = (const Ghost& r) {
+		own_color = r.own_color;
+		x = r.x;
+		y = r.y;
+		sx = r.sx;
+		sy = r.sy;
+		tabu_list = r.tabu_list;
+		edible_until = r.edible_until;
+		dead_until = r.dead_until;
+	}
 
 	Ghost(int x, int y, int own_color, int tabu_size = 3):
 		sx(x), sy(y), x(x), y(y),

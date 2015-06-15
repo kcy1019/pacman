@@ -29,11 +29,11 @@ public:
 };
 
 class Game {
-private:
+protected:
 	typedef std::uniform_real_distribution<> RealDistribution;
 	typedef std::uniform_int_distribution<> IntDistribution;
 
-	int height, width, score, sight, nghosts;
+	int height, width, score, sight, nghosts, nbiscuits, nfruits;
 	vector<vector<Cell>> field;
 	vector<Ghost> ghosts;
 	PacMan pacman;
@@ -49,7 +49,7 @@ public:
 	Game(int height, int width, int sight = 10, int nghosts = 5):
 		height(height), width(width), score(0),
 		pacman(), sight(sight), rand4(0, 3),
-		nghosts(nghosts), ghosts()
+		nghosts(nghosts), nbiscuits(0), nfruits(0), ghosts()
 	{
 		static const double fruit_dist = 0.90;
 		MazeFactory<Cell> factory;
@@ -72,18 +72,26 @@ public:
 
 		for (int i = 0; i < height; i++) {
 			for (int j = 0; j < width; j++) {
-				if (field[i][j] == Cell::EMPTY)
+				if (field[i][j] == Cell::EMPTY) {
 					field[i][j] = Cell::BISCUIT;
+					++nbiscuits;
+				} else continue;
 				if (i-1 >= 0 && j-1 >= 0 && i+1 < height && j+1 < width &&
 					field[i+1][j] != Cell::WALL &&
 					field[i-1][j] != Cell::WALL &&
 					field[i][j+1] != Cell::WALL &&
 					field[i][j-1] != Cell::WALL &&
-					real.GetRandom() > fruit_dist)
+					real.GetRandom() > fruit_dist) {
 					field[i][j] = Cell::FRUIT;
+					++nfruits;
+					--nbiscuits;
+				}
 			}
 		}
+	}
 
+	inline void DrawLegends(void)
+	{
 		GraphicsToolkit& pen = GraphicsToolkit::GetInstance();
 		pen.DrawText(10, height + 1, GraphicsToolkit::RED, "$");
 		pen.DrawText(11, height + 1, GraphicsToolkit::CYAN, "$");
@@ -138,6 +146,9 @@ public:
 		sprintf(life_buffer, "Life: %d", pacman.lives_left());
 		pen.DrawText(0, height+1, GraphicsToolkit::YELLOW, life_buffer);
 		pen.DrawText(0, height+2, GraphicsToolkit::PINK, score_buffer);
+		if (current_time < 10) {
+			DrawLegends();
+		}
 	}
 
 	inline bool Blocked(int x, int y, bool block_overlap = false) const {
@@ -221,6 +232,12 @@ public:
 		if (field[y][x] == Cell::BISCUIT) {
 			field[y][x] = Cell::EMPTY;
 			score += 1;
+			if (--nbiscuits == 0) {
+				// Victory!
+				score += (1 + pacman.lives_left()) << 11;
+				score += nfruits << 8;
+				EndGame();
+			}
 		} else if (field[y][x] == Cell::FRUIT) {
 			field[y][x] = Cell::EMPTY;
 			score += 50;
@@ -253,7 +270,13 @@ public:
 
 	inline void EndGame(void) {
 		GraphicsToolkit& pen = GraphicsToolkit::GetInstance();
+		char score_buffer[64] = {};
+		int ptr = sprintf(score_buffer, "Your final score: %d", score);
+		sprintf(score_buffer + ptr, "Press any key to exit.");
+		pen.DrawMessageBox(0, 0, GraphicsToolkit::LEMON, score_buffer);
+		getchar();
 		pen.EndGraphics();
+		printf("[PacMan] Final Score: %d\n", score); 
 		exit(0);
 	}
 };

@@ -9,7 +9,7 @@ using std::vector;
 int main()
 {
 	GraphicsToolkit& pen = GraphicsToolkit::GetInstance();
-	Game game(15, 15);
+	Game game(25, 25, 25 / 2);
 	IntervalTimer main_clock(1. / 30.);
 	main_clock.Loop([&game](long long current_time) {
 			static const int KEY_ESC = 27;

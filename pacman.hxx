@@ -12,6 +12,13 @@ private:
 public:
 	PacMan(int lives = 3):
 		x(0), y(0), sx(0), sy(0), lives(lives) {}
+	inline void operator = (const PacMan& p) {
+		x = p.x;
+		y = p.y;
+		sx = p.sx;
+		sy = p.sy;
+		lives = p.lives;
+	}
 	inline Coord position(void) const {
 		return {x, y};
 	}
