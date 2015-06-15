@@ -13,4 +13,4 @@ autoplay:
 
 clean:
 	rm -f pacman disjointset.gch game.gch ghost.gch graphics.gch\
-		pacman.gch random.gch timer.gch genetic.game.gch
+		pacman.gch random.gch timer.gch genetic.game.hxx.gch
