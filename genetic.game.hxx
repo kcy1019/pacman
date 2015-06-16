@@ -1,6 +1,7 @@
 #pragma once
 #ifndef __GENETIC_GAME__
 #define __GENETIC_GAME__
+#include<set>
 #include<vector>
 #include<random>
 #include<string>
@@ -42,6 +43,10 @@ public:
 
 // Game without GUI(+ncurses) and messages.
 // This can play multiple games on the same board.
+#ifdef __TRAINER__
+static const int GHOST_RESPAWN_DELAY = 500;
+static const int GHOST_EDIBLE_DURATION = 500;
+#endif
 class TrainingGame {
 protected:
 	int height, width, score, sight,
@@ -152,7 +157,12 @@ public:
 		static const int dx[4] = {-1, 0, 1, 0},
 						 dy[4] = {0, 1, 0, -1};
 		int x = pacman.position().x,
-			y = pacman.position().y;
+			y = pacman.position().y,
+			gpx[ghosts.size()],
+			gpy[ghosts.size()],
+			ged[ghosts.size()],
+			gdd[ghosts.size()],
+			ptr;
 
 		for (auto& ghost: ghosts) {
 			if (ghost.dead(current_time)) continue;
@@ -170,10 +180,15 @@ public:
 			}
 		}
 
+		ptr = 0;
 		for (auto& ghost: ghosts) {
 			int gx = ghost.position().x,
 				gy = ghost.position().y,
+				ge = ghost.edible(current_time),
+				gd = ghost.dead(current_time),
 				cur_distance = Distance(gx, gy, x, y);
+			std::tie(gpx[ptr], gpy[ptr], ged[ptr], gdd[ptr]) = 
+				std::tie(gx, gy, ge, gd);
 			bool moved = false, is_random = true;;
 			if (cur_distance <= sight) {
 				for (int k = 0; k < 4; k++) {
@@ -220,32 +235,57 @@ public:
 			field[y][x] = Cell::EMPTY;
 			score += 50;
 			for (auto& ghost: ghosts) {
-				ghost.set_edible(current_time + 500);
+				ghost.set_edible(current_time + GHOST_EDIBLE_DURATION);
 			}
 		}
 
+		int nx = x, ny = y;
 		switch(stream(field, ghosts, pacman)) {
 			case LEFT:
-				if (!Blocked(x-1, y))
+				if (!Blocked(x-1, y)) {
 					pacman.move(-1, 0);
+					nx -= 1;
+				}
 				break;
 			case RIGHT:
-				if (!Blocked(x+1, y))
+				if (!Blocked(x+1, y)) {
 					pacman.move(1, 0);
+					nx += 1;
+				}
 				break;
 			case UP:
-				if (!Blocked(x, y-1))
+				if (!Blocked(x, y-1)) {
 					pacman.move(0, -1);
+					ny -= 1;
+				}
 				break;
 			case DOWN:
-				if (!Blocked(x, y+1))
+				if (!Blocked(x, y+1)) {
 					pacman.move(0, 1);
+					ny += 1;
+				}
 				break;
 			case ESC:
 				// In case of AI controller, this can be 'timeout'.
 				timeout = true;
 				EndGame();
 		}
+
+		for (int i = 0; i < ghosts.size(); i++) {
+			if (ghosts[i].position() == std::make_pair(x, y) &&
+				pacman.position() == std::make_pair(gpx[i], gpy[i])) {
+				if (ged[i]) {
+					ghosts[i].set_dead(current_time + GHOST_RESPAWN_DELAY);
+				} else if (!gdd[i]) {
+					if (pacman.lives_left()) {
+						pacman.set_dead();
+					} else {
+						EndGame();
+					}
+				}
+			}
+		}
+
 	}
 
 	inline void EndGame(void) {
@@ -371,14 +411,17 @@ public:
 	}
 
 	inline double EvaluateKernel(int x, int y,
+			long long current_time,
 			const vector<vector<Cell>>& field,
 			const vector<Ghost>& ghosts,
 			const PacMan& pacman) const {
 		double score = 0;
-		int px, py, gn = ghosts.size(), gx[gn], gy[gn];
+		int px, py, gn = ghosts.size(), gx[gn], gy[gn], ge[gn];
 		const int gbase = kernel_size_sq * 3;
 		for (int i = 0; i < ghosts.size(); i++) {
 			std::tie(gx[i], gy[i]) = ghosts[i].position();
+			ge[i] = ghosts[i].edible(current_time) ||
+					field[y][x] == Cell::FRUIT;
 		}
 		std::tie(px, py) = pacman.position();
 		for (int ky = 0; ky < kernel_size; ky++) {
@@ -394,7 +437,7 @@ public:
 				bool ghost_in_cell = false;
 				for (int g = 0; g < gn; g++) {
 					if (w == gx[g] && h == gy[g]) {
-						score += weights[gbase + (ky * kernel_size + kx)];
+						score += (ge[g] ? -1. : 1.) * weights[gbase + (ky * kernel_size + kx)];
 						ghost_in_cell = true;
 						break;
 					}
@@ -432,6 +475,7 @@ public:
 	}
 
 	inline int DecideMove(
+			long long current_time,
 			const vector<vector<Cell>>& field,
 			const vector<Ghost>& ghosts,
 			const PacMan& pacman) const {
@@ -442,20 +486,21 @@ public:
 			TrainingGame::RIGHT, TrainingGame::UP,
 			TrainingGame::NONE
 		};
-		static const double random_move_threshold = 0.7;
+		static const double random_move_threshold = 0.95;
 
 		double scores[5] = {};
 		int px, py, maximum_score = 4;
 		std::tie(px, py) = pacman.position();
-		scores[4] = EvaluateKernel(px, py, field, ghosts, pacman);
+		scores[4] = EvaluateKernel(px, py, current_time, field, ghosts, pacman);
 
 		for (int d = 0; d < 4; d++) {
 			scores[d] = SMALLEST;
 			if (!Blocked(px + dx[d], py + dy[d], field)) {
 				scores[d] = EvaluateKernel(px + dx[d], py + dy[d],
+										current_time + 1,
 										field, ghosts, pacman);
 				if (scores[d] > scores[maximum_score] ||
-					(scores[d] == scores[maximum_score] &&
+					(/*scores[d] == scores[maximum_score] &&*/
 					 zero_to_one.GetRandom() > random_move_threshold)) {
 					maximum_score = d;
 				}
@@ -468,19 +513,21 @@ public:
 
 class PacManTrainer {
 protected:
-	long long timeout_t;
+	long long max_moves;
+	int kernel_size;
 	int total_generations,
 		population_per_generation;
 	double threshold_mutation,
 		   threshold_crossover;
 public:
 	PacManTrainer(long long to = 2000000, int generations = 100, int population = 100,
-				double prob_mutation = 0.60, double prob_crossover = 0.05):
-		timeout_t(to),
+				double prob_mutation = 0.05, double prob_crossover = 0.60, int kn_sz = 3):
+		max_moves(to),
 		total_generations(generations),
 		population_per_generation(population),
 		threshold_mutation(1. - prob_mutation),
-		threshold_crossover(1. - prob_crossover) {}
+		threshold_crossover(1. - prob_crossover),
+		kernel_size(kn_sz) {}
 
 	// two point crossover
 	static inline vector<PacManGene> Crossover(
@@ -508,7 +555,7 @@ public:
 		}
 	}
 
-	inline vector<PacManGene> ProcessGeneration(
+	inline std::tuple<PacManGene, vector<PacManGene>> ProcessGeneration(
 			vector<PacManGene>& current_generations)
 	{
 		TrainingGame game;
@@ -520,8 +567,8 @@ public:
 					const vector<vector<Cell>>& field,
 					const vector<Ghost>& ghosts,
 					const PacMan& pacman) {
-						if (t >= timeout_t) return (int)TrainingGame::ESC;
-						return current.DecideMove(field, ghosts, pacman);
+						if (t >= max_moves) return (int)TrainingGame::ESC;
+						return current.DecideMove(t, field, ghosts, pacman);
 					});
 				++t;
 			}
@@ -570,7 +617,7 @@ public:
 				Mutate(gene);
 		}
 
-		return next_generations;
+		return make_tuple(current_generations[0], next_generations);
 	}
 	
 	inline vector<PacManGene> Train(void)
@@ -579,15 +626,39 @@ public:
 		vector<PacManGene> genes;
 
 		while (genes.size() < population_per_generation) {
-			genes.emplace_back(PacManGene());
+			genes.emplace_back(PacManGene(kernel_size));
 		}
 
+		std::set<PacManGene> finest_genes;
 		while (current_generation < total_generations) {
+			PacManGene finest;
 			printf("Generation #%02d:\n", current_generation);
-			genes = ProcessGeneration(genes);
+			std::tie(finest, genes) = ProcessGeneration(genes);
+			if (finest_genes.size() > 10) {
+				finest_genes.erase(finest_genes.begin());
+			}
 			++current_generation;
 		}
 
+		TrainingGame game;
+		for (auto& gene: genes) {
+			game.Reset();
+			long long t = 0;
+			while (!game.is_finished()) {
+				game.Process(t, [this, &t, &game, &gene](
+					const vector<vector<Cell>>& field,
+					const vector<Ghost>& ghosts,
+					const PacMan& pacman) {
+						if (t >= max_moves) return (int)TrainingGame::ESC;
+						return gene.DecideMove(t, field, ghosts, pacman);
+					});
+				++t;
+			}
+			gene.set_fitness(game.get_score());
+			gene.set_timed_out(game.is_timed_out());
+		}
+
+		std::sort(genes.begin(), genes.end());
 		return genes;
 	}
 };

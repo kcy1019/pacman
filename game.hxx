@@ -12,6 +12,8 @@
 #define y second 
 using std::vector;
 
+static const int GHOST_RESPAWN_DELAY = 500;
+static const int GHOST_EDIBLE_DURATION = 500;
 class Cell {
 public:
 	char type;
@@ -174,13 +176,18 @@ public:
 						 dy[4] = {0, 1, 0, -1};
 		GraphicsToolkit& pen = GraphicsToolkit::GetInstance();
 		int x = pacman.position().x,
-			y = pacman.position().y;
+			y = pacman.position().y,
+			gpx[ghosts.size()],
+			gpy[ghosts.size()],
+			ged[ghosts.size()],
+			gdd[ghosts.size()],
+			ptr;
 
 		for (auto& ghost: ghosts) {
 			if (ghost.dead(current_time)) continue;
 			if (ghost.position() == pacman.position()) {
 				if (ghost.edible(current_time)) {
-					ghost.set_dead(current_time + 100);
+					ghost.set_dead(current_time + GHOST_RESPAWN_DELAY);
 					score += 100;
 				} else {
 					if (pacman.lives_left()) {
@@ -192,10 +199,15 @@ public:
 			}
 		}
 
+		ptr = 0;
 		for (auto& ghost: ghosts) {
 			int gx = ghost.position().x,
 				gy = ghost.position().y,
+				ge = ghost.edible(current_time),
+				gd = ghost.dead(current_time),
 				cur_distance = Distance(gx, gy, x, y);
+			std::tie(gpx[ptr], gpy[ptr], ged[ptr], gdd[ptr]) = 
+				std::tie(gx, gy, ge, gd);
 			bool moved = false, is_random = true;;
 			if (cur_distance <= sight) {
 				for (int k = 0; k < 4; k++) {
@@ -227,6 +239,7 @@ public:
 					}
 				}
 			}
+			++ptr;
 		}
 
 		if (field[y][x] == Cell::BISCUIT) {
@@ -242,9 +255,10 @@ public:
 			field[y][x] = Cell::EMPTY;
 			score += 50;
 			for (auto& ghost: ghosts) {
-				ghost.set_edible(current_time + 500);
+				ghost.set_edible(current_time + GHOST_EDIBLE_DURATION);
 			}
 		}
+
 		switch(input_source(field, ghosts, pacman)) {
 			case LEFT:
 				if (!Blocked(x-1, y))
@@ -265,6 +279,22 @@ public:
 			case ESC:
 				EndGame();
 		}
+
+		for (int i = 0; i < ghosts.size(); i++) {
+			if (ghosts[i].position() == std::make_pair(x, y) &&
+				pacman.position() == std::make_pair(gpx[i], gpy[i])) {
+				if (ged[i]) {
+					ghosts[i].set_dead(current_time + GHOST_RESPAWN_DELAY);
+				} else if (!gdd[i]) {
+					if (pacman.lives_left()) {
+						pacman.set_dead();
+					} else {
+						EndGame();
+					}
+				}
+			}
+		}
+
 		Draw(current_time);
 	}
 

@@ -10,7 +10,7 @@ int main()
 {
 	GraphicsToolkit& pen = GraphicsToolkit::GetInstance();
 	Game game(25, 25, 25 / 2);
-	IntervalTimer main_clock(1. / 30.);
+	IntervalTimer main_clock(1. / 33.);
 	main_clock.Loop([&game](long long current_time) {
 			static const int KEY_ESC = 27;
 			game.Process(current_time, [](const vector<vector<Cell>>& field,
