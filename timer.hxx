@@ -8,25 +8,25 @@ using std::chrono::steady_clock;
 
 class IntervalTimer {
 private:
-	long long hit_count;
-	duration<double> interval;
-	time_point<steady_clock> last;
+    long long hit_count;
+    duration<double> interval;
+    time_point<steady_clock> last;
 public:
-	IntervalTimer(double _interval):
-		hit_count(0LL), last(steady_clock::now())
-	{
-		interval = duration<double>(_interval);
-	}
+    IntervalTimer(double _interval):
+        hit_count(0LL), last(steady_clock::now())
+    {
+        interval = duration<double>(_interval);
+    }
 
-	template<typename Function>
-	inline void Loop(const Function& callback) {
-		for (;;) {
-			if ((steady_clock::now() - last) >= interval) {
-				last = steady_clock::now();
-				callback(++hit_count);
-			}
-		}
-	}
+    template<typename Function>
+    inline void Loop(const Function& callback) {
+        for (;;) {
+            if ((steady_clock::now() - last) >= interval) {
+                last = steady_clock::now();
+                callback(++hit_count);
+            }
+        }
+    }
 };
 
 #endif

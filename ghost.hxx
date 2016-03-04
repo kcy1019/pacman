@@ -10,10 +10,10 @@
 #ifdef __TRAINER__
 class GraphicsToolkit {
 public:
-	static const enum {BLACK = 16, LEMON = 184, BLUE = 23,
-					   RED = 124, CYAN = 122, YELLOW = 100,
-					   PINK = 168, GREEN = 53, WHITE = 230,
-					   GRAY = 242} ColorSet;
+    static const enum {BLACK = 16, LEMON = 184, BLUE = 23,
+                       RED = 124, CYAN = 122, YELLOW = 100,
+                       PINK = 168, GREEN = 53, WHITE = 230,
+                       GRAY = 242} ColorSet;
 };
 #endif
 
@@ -23,83 +23,83 @@ using std::vector;
 
 class Ghost {
 private:
-	typedef std::pair<int,int> Coord;
-	typedef std::uniform_real_distribution<> RealDistribution;
+    typedef std::pair<int,int> Coord;
+    typedef std::uniform_real_distribution<> RealDistribution;
 
-	int own_color;
-	int x, y, sx, sy;
-	vector<Coord> tabu_list;
-	long long edible_until, dead_until;
-	Random<RealDistribution, double> real;
+    int own_color;
+    int x, y, sx, sy;
+    vector<Coord> tabu_list;
+    long long edible_until, dead_until;
+    Random<RealDistribution, double> real;
 
 public:
-	Ghost& operator = (Ghost&&) { return *this; }
-	Ghost(const Ghost& r):
-		own_color(r.own_color),
-		x(r.x), y(r.y), sx(r.sx), sy(r.sy),
-		tabu_list(r.tabu_list),
-		edible_until(r.edible_until),
-		dead_until(r.dead_until),
-		real(0., 1.) {}
+    Ghost& operator = (Ghost&&) { return *this; }
+    Ghost(const Ghost& r):
+        own_color(r.own_color),
+        x(r.x), y(r.y), sx(r.sx), sy(r.sy),
+        tabu_list(r.tabu_list),
+        edible_until(r.edible_until),
+        dead_until(r.dead_until),
+        real(0., 1.) {}
 
-	void operator = (const Ghost& r) {
-		own_color = r.own_color;
-		x = r.x;
-		y = r.y;
-		sx = r.sx;
-		sy = r.sy;
-		tabu_list = r.tabu_list;
-		edible_until = r.edible_until;
-		dead_until = r.dead_until;
-	}
+    void operator = (const Ghost& r) {
+        own_color = r.own_color;
+        x = r.x;
+        y = r.y;
+        sx = r.sx;
+        sy = r.sy;
+        tabu_list = r.tabu_list;
+        edible_until = r.edible_until;
+        dead_until = r.dead_until;
+    }
 
-	Ghost(int x, int y, int own_color, int tabu_size = 3):
-		sx(x), sy(y), x(x), y(y),
-		edible_until(-1LL), dead_until(-1LL), own_color(own_color),
-		tabu_list(tabu_size, {-1, -1}), real(0., 1.) {}
+    Ghost(int x, int y, int own_color, int tabu_size = 3):
+        sx(x), sy(y), x(x), y(y),
+        edible_until(-1LL), dead_until(-1LL), own_color(own_color),
+        tabu_list(tabu_size, {-1, -1}), real(0., 1.) {}
 
-	Ghost(Ghost&& r):
-		sx(r.x), sy(r.y), x(r.x), y(r.y),
-		edible_until(r.edible_until), dead_until(r.dead_until), own_color(r.own_color),
-		tabu_list(r.tabu_list), real(0., 1.) {}
+    Ghost(Ghost&& r):
+        sx(r.x), sy(r.y), x(r.x), y(r.y),
+        edible_until(r.edible_until), dead_until(r.dead_until), own_color(r.own_color),
+        tabu_list(r.tabu_list), real(0., 1.) {}
 
-	inline int color(long long current_time) const {
-		return edible(current_time) ? GraphicsToolkit::WHITE :
-			   dead(current_time) ? GraphicsToolkit::GRAY :
-			   own_color;
-	}
-	inline Coord position(void) const {
-		return {x, y};
-	}
-	inline bool edible(long long t) const {
-		return t <= edible_until;
-	}
-	inline bool dead(long long t) const {
-		return t <= dead_until;
-	}
-	inline void set_edible(long long until) {
-		edible_until = until;
-	}
-	inline void set_dead(long long until) {
-		x = sx;
-		y = sy;
-		dead_until = until;
-		edible_until = -1;
-	}
-	inline bool move(long long current_time, int dx, int dy, bool random = true) {
-		static const double threshold = 0.60;
-		// ghost is slower than the pacman.
-		if (current_time % 7 == 0 && !dead(current_time) &&
-			 (real.GetRandom() > threshold ||
-			 find(tabu_list.begin(), tabu_list.end(), Coord(x+dx, y+dy)) ==
-			 tabu_list.end())) {
-			x += dx;
-			y += dy;
-			tabu_list.push_back({x, y});
-			return true;
-		} else {
-			return false;
-		}
-	}
+    inline int color(long long current_time) const {
+        return edible(current_time) ? GraphicsToolkit::WHITE :
+               dead(current_time) ? GraphicsToolkit::GRAY :
+               own_color;
+    }
+    inline Coord position(void) const {
+        return {x, y};
+    }
+    inline bool edible(long long t) const {
+        return t <= edible_until;
+    }
+    inline bool dead(long long t) const {
+        return t <= dead_until;
+    }
+    inline void set_edible(long long until) {
+        edible_until = until;
+    }
+    inline void set_dead(long long until) {
+        x = sx;
+        y = sy;
+        dead_until = until;
+        edible_until = -1;
+    }
+    inline bool move(long long current_time, int dx, int dy, bool random = true) {
+        static const double threshold = 0.60;
+        // ghost is slower than the pacman.
+        if (current_time % 7 == 0 && !dead(current_time) &&
+             (real.GetRandom() > threshold ||
+             find(tabu_list.begin(), tabu_list.end(), Coord(x+dx, y+dy)) ==
+             tabu_list.end())) {
+            x += dx;
+            y += dy;
+            tabu_list.push_back({x, y});
+            return true;
+        } else {
+            return false;
+        }
+    }
 };
 #endif
